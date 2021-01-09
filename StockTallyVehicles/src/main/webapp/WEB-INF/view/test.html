@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>截至当前尚未关闭的派车车辆列表</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="../statics/layui/css/layui.css"  media="all">
+    <!-- 注意：如果你直接复制所有代码到本地，上述css路径需要改成你本地的 -->
+</head>
+<body>
+
+<div id="title" style="padding: 30px">
+    <h1 style="margin: 0 auto;text-align: center;font-size: 3em">当前待理货的派车车辆列表</h1>
+</div>
+<div class="demoTable" style="zoom: 80%;">
+    <fieldset class="layui-elem-field" style="margin: 0 auto;width: 1300px;">
+        <legend>过滤条件设置</legend>
+        <div id="selectItem" style="padding-top: 30px;padding-bottom: 30px;margin: 0 auto">
+            <form class="layui-form" id="queryForm" name="queryForm" method="post">
+                <div class="layui-inline" style="font-size: 20px;padding-left: 25px">
+                    <label class="layui-form-label" style="width: 130px">选择车辆状态</label>
+                    <div class="layui-input-inline" style="width: 185px">
+                        <select name="truckStatusSelect" id="truckStatusSelect"  lay-search="">
+                            <option value="" >默认为一次过磅</option>
+<!---->
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline" style="font-size: 20px">
+                    <label class="layui-form-label" style="width: 180px">选择车辆的物料名称</label>
+                    <div class="layui-input-inline" style="width: 180px">
+                        <select name="materialNameSelect" id="materialNameSelect"  lay-search="">
+                            <option value="">直接选择或搜索</option>
+
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline" style="font-size: 20px">
+                    <label class="layui-form-label" style="width: 150px">选择派车单类型</label>
+                    <div class="layui-input-inline"style="width: 200px">
+                        <%--                    lay-verify="required"--%>
+                        <select name="billTypeSelect" id="billTypeSelect"  lay-search="">
+                            <option value="">默认为采购类单据</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline" style="padding-left:10px ">
+                    <a data-type="reload" class="layui-btn" style="width: 90px" >查询单据</a>
+
+                </div>
+            </form>
+
+        </div>
+    </fieldset>
+</div>
+
+<div style="width: 90%;margin: 0 auto;text-align: center;padding-top: 40px;padding-bottom: 100px;zoom: 120%">
+    <table class="layui-hide" id="LAY_table_truckBill" lay-filter="user" style="width: 90%;margin: 0 auto;font-size: 30px "></table>
+</div>
+<!--<iframe allow="autoplay" src="http://data.huiyi8.com/2017/gha/03/17/1702.mp3"></iframe>-->
+<script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.js"></script>
+<script src="../statics/layui/layui.js" charset="utf-8"></script>
+<!-- 注意：如果你直接复制所有代码到本地，上述js路径需要改成你本地的 -->
+
+<script>
+    layui.use('table', function(){
+
+        // var element = layui.element();
+        var table = layui.table,
+            $ = layui.$,
+            layer = layui.layer;
+        var truckStatusSelect = $('#truckStatusSelect'),
+            materialNameSelect = $('#materialNameSelect'),
+            billTypeSelect = $('#billTypeSelect'),
+            refreshTime = $('#refreshTime');
+        var nowTruckStatus = truckStatusSelect.val()
+            ,nowBillType = billTypeSelect.val();
+        // alert("获取到truckStatus的值为："+nowTruckStatus);
+        if(nowTruckStatus == ''){
+            // alert("获取到truckStatus的值为："+nowTruckStatus);
+            nowTruckStatus = '1次过磅'
+        }if(nowBillType == ''){
+            nowBillType = '标准销售类'
+        }
+        var mp3 = new Audio('车辆入厂提示音.mp3');  // 创建音频对象
+        mp3.play();
+        //方法级渲染
+        table.render({
+            elem: '#LAY_table_truckBill'
+            ,url: 'truckBillAction'
+            ,cellMinWidth: 80
+            ,cellMaxWidth:180
+            ,method:'post'
+            ,cols: [[
+                // {checkbox: true, fixed: true},
+                {field:'billNo', width:315, title: '派车单编号', sort: true}
+                ,{field:'wbTime1', width:335, title: '一次称重时间',sort: true}
+                ,{field:'materialName', width:222, title: '物料名称'}
+                ,{field:'driver', width: 160, title: '司机'}
+                ,{field:'carNum', width:205, title: '车牌号', sort: true}
+                ,{field:'billType', width:306,   title: '派车单类型'}
+                ,{field:'truckStatus', width:177, title: '车辆状态',sort: true}
+
+            ]]
+            ,where:{
+                truckStatus: nowTruckStatus,
+                billType:nowBillType,
+                refreshTime:refreshTime.val()
+            }
+            ,id: 'testReload'
+            ,page: true
+            ,limits: [3,5,10]  //一页选择显示3,5或10条数据
+            ,limit: 10  //一页显示10条数据
+            , parseData: function(res){ //将原始数据解析成 table 组件所规定的数据，res为从url中get到的数据
+                var result;
+                console.log(this);
+                console.log(JSON.stringify(res));
+                if(this.page.curr){
+                    result = res.data.slice(this.limit*(this.page.curr-1),this.limit*this.page.curr);
+                }
+                else{
+                    result=res.data.slice(0,this.limit);
+                }
+                return {
+                    "code": res.code, //解析接口状态
+                    "msg": res.msg, //解析提示文本
+                    "count": res.count, //解析数据长度
+                    "data": result //解析数据列表
+                };
+            }
+        });
+
+
+    });
+</script>
+
+<!--<script>-->
+
+<!--    setTimeout("location='/StockTallyVehicles/'; ", 10000);-->
+<!--</script>-->
+
+</body>
+</html>
